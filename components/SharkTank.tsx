@@ -1,3 +1,4 @@
+// components/SharkTank.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -605,9 +606,6 @@ const SharkTank = ({ productData }) => {
                 </div>
               </div>
 
-              <div className="text-blue-600 font-medium mb-4 text-lg">
-                {productData.askingFor}
-              </div>
 
               <p className="text-gray-600 mb-6 leading-relaxed">
                 {productData.description}

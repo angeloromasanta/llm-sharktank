@@ -15,30 +15,31 @@ const SetupForm = () => {
     selectedModels: {
       'meta-llama/llama-3.3-70b-instruct': {
         selected: true,
-        positions: { pro: false, neutral: true, against: false },
+        positions: { pro: 0, neutral: 1, against: 0 },
       },
       'google/gemini-2.0-flash-001': {
         selected: true,
-        positions: { pro: false, neutral: true, against: false },
+        positions: { pro: 0, neutral: 1, against: 0 },
       },
       'mistralai/mistral-nemo': {
         selected: true,
-        positions: { pro: false, neutral: true, against: false },
+        positions: { pro: 0, neutral: 1, against: 0 },
       },
       'openai/gpt-4o-mini': {
         selected: true,
-        positions: { pro: false, neutral: true, against: false },
+        positions: { pro: 0, neutral: 1, against: 0 },
       },
       'deepseek/deepseek-chat': {
         selected: true,
-        positions: { pro: false, neutral: true, against: false },
+        positions: { pro: 0, neutral: 1, against: 0 },
       },
       'anthropic/claude-3.7-sonnet': {
         selected: true,
-        positions: { pro: false, neutral: true, against: false },
+        positions: { pro: 0, neutral: 1, against: 0 },
       },
     },
   });
+  
 
   const [formStep, setFormStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,51 +93,91 @@ const SetupForm = () => {
     });
   };
 
-  const handleModelToggle = (modelId, position) => {
-    // Get the current state for this model
-    const currentModel = formData.selectedModels[modelId];
-
-    // Toggle the specified position
-    const newPositions = {
-      ...currentModel.positions,
-      [position]: !currentModel.positions[position],
-    };
-
-    // Determine if any position is selected
-    const hasAnyPositionSelected =
-      newPositions.pro || newPositions.neutral || newPositions.against;
-
-    // Update the model with new positions and selection status
-    setFormData({
-      ...formData,
-      selectedModels: {
-        ...formData.selectedModels,
-        [modelId]: {
-          selected: hasAnyPositionSelected, // Model is selected if at least one position is active
-          positions: newPositions,
-        },
+ // Update the handleModelToggle function to track counts instead of boolean values
+const handleModelToggle = (modelId, position) => {
+  // Get the current state for this model
+  const currentModel = formData.selectedModels[modelId];
+  
+  // For the specified position, increment or decrement the count
+  const currentCount = currentModel.positions[position] || 0;
+  const newCount = currentCount > 0 ? currentCount + 1 : 1;
+  
+  // Update the positions with the new count
+  const newPositions = {
+    ...currentModel.positions,
+    [position]: newCount,
+  };
+  
+  // Determine if any position is selected
+  const hasAnyPositionSelected = Object.values(newPositions).some(count => count > 0);
+  
+  // Update the model with new positions and selection status
+  setFormData({
+    ...formData,
+    selectedModels: {
+      ...formData.selectedModels,
+      [modelId]: {
+        selected: hasAnyPositionSelected,
+        positions: newPositions,
       },
-    });
-  };
+    },
+  });
+};
 
+// Also add a function to decrement the position count
+const handleModelDecrement = (modelId, position) => {
+  // Get the current state for this model
+  const currentModel = formData.selectedModels[modelId];
+  
+  // For the specified position, decrement the count (minimum 0)
+  const currentCount = currentModel.positions[position] || 0;
+  const newCount = currentCount > 1 ? currentCount - 1 : 0;
+  
+  // Update the positions with the new count
+  const newPositions = {
+    ...currentModel.positions,
+    [position]: newCount,
+  };
+  
+  // Determine if any position is selected
+  const hasAnyPositionSelected = Object.values(newPositions).some(count => count > 0);
+  
+  // Update the model with new positions and selection status
+  setFormData({
+    ...formData,
+    selectedModels: {
+      ...formData.selectedModels,
+      [modelId]: {
+        selected: hasAnyPositionSelected,
+        positions: newPositions,
+      },
+    },
+  });
+};
   // Update the countSelectedModels function
-  const countSelectedModels = () => {
-    return Object.values(formData.selectedModels).filter((v) => v.selected)
-      .length;
-  };
+  
 
-  // Count total model-position combinations (for tracking total participants)
-  const countTotalModelPositions = () => {
-    let count = 0;
-    Object.values(formData.selectedModels).forEach((model) => {
-      if (model.selected) {
-        Object.values(model.positions).forEach((isPositionActive) => {
-          if (isPositionActive) count++;
-        });
-      }
+// Update the initial state to use counts instead of booleans
+
+// Update the countSelectedModels function
+const countSelectedModels = () => {
+  return Object.values(formData.selectedModels).filter((model) => 
+    Object.values(model.positions).some(count => count > 0)
+  ).length;
+};
+
+// Update the countTotalModelPositions function
+const countTotalModelPositions = () => {
+  let count = 0;
+  Object.values(formData.selectedModels).forEach((model) => {
+    Object.values(model.positions).forEach((positionCount) => {
+      count += positionCount;
     });
-    return count;
-  };
+  });
+  return count;
+};
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -359,51 +400,115 @@ const SetupForm = () => {
                       </div>
 
                       {/* Position selection buttons */}
-                      <div className="mt-3 grid grid-cols-3 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleModelToggle(model.id, 'pro')}
-                          className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                            formData.selectedModels[model.id].positions.pro
-                              ? 'bg-green-100 text-green-800 border-2 border-green-500 shadow-sm'
-                              : 'bg-white text-gray-600 border border-gray-300 hover:bg-green-50'
-                          }`}
-                        >
-                          <div className="flex flex-col items-center">
-                            <span className="text-xs">Pro</span>
-                            <span className="text-xs">(Option A)</span>
-                          </div>
-                        </button>
+                      {/* Position selection buttons - updated with counters */}
+<div className="mt-3 grid grid-cols-3 gap-2">
+  {/* Pro position */}
+  <div
+    className={`px-3 py-2 rounded-md text-sm transition-colors ${
+      formData.selectedModels[model.id].positions.pro
+        ? 'bg-green-100 text-green-800 border-2 border-green-500 shadow-sm'
+        : 'bg-white text-gray-600 border border-gray-300'
+    }`}
+  >
+    <div className="flex flex-col items-center">
+      <span className="text-xs">Pro</span>
+      <span className="text-xs">(Option A)</span>
+      
+      {/* Count display and controls */}
+      <div className="flex items-center mt-1">
+        <button
+          type="button"
+          onClick={() => handleModelDecrement(model.id, 'pro')}
+          className="w-6 h-6 bg-gray-200 rounded-l text-gray-700 flex items-center justify-center hover:bg-gray-300"
+          disabled={!formData.selectedModels[model.id].positions.pro}
+        >
+          -
+        </button>
+        <span className="w-8 text-center">
+          {formData.selectedModels[model.id].positions.pro || 0}
+        </span>
+        <button
+          type="button"
+          onClick={() => handleModelToggle(model.id, 'pro')}
+          className="w-6 h-6 bg-gray-200 rounded-r text-gray-700 flex items-center justify-center hover:bg-gray-300"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleModelToggle(model.id, 'neutral')}
-                          className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                            formData.selectedModels[model.id].positions.neutral
-                              ? 'bg-blue-100 text-blue-800 border-2 border-blue-500 shadow-sm'
-                              : 'bg-white text-gray-600 border border-gray-300 hover:bg-blue-50'
-                          }`}
-                        >
-                          <div className="flex flex-col items-center">
-                            <span>Neutral</span>
-                          </div>
-                        </button>
+  {/* Neutral position */}
+  <div
+    className={`px-3 py-2 rounded-md text-sm transition-colors ${
+      formData.selectedModels[model.id].positions.neutral
+        ? 'bg-blue-100 text-blue-800 border-2 border-blue-500 shadow-sm'
+        : 'bg-white text-gray-600 border border-gray-300'
+    }`}
+  >
+    <div className="flex flex-col items-center">
+      <span>Neutral</span>
+      
+      {/* Count display and controls */}
+      <div className="flex items-center mt-1">
+        <button
+          type="button"
+          onClick={() => handleModelDecrement(model.id, 'neutral')}
+          className="w-6 h-6 bg-gray-200 rounded-l text-gray-700 flex items-center justify-center hover:bg-gray-300"
+          disabled={!formData.selectedModels[model.id].positions.neutral}
+        >
+          -
+        </button>
+        <span className="w-8 text-center">
+          {formData.selectedModels[model.id].positions.neutral || 0}
+        </span>
+        <button
+          type="button"
+          onClick={() => handleModelToggle(model.id, 'neutral')}
+          className="w-6 h-6 bg-gray-200 rounded-r text-gray-700 flex items-center justify-center hover:bg-gray-300"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleModelToggle(model.id, 'against')}
-                          className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                            formData.selectedModels[model.id].positions.against
-                              ? 'bg-red-100 text-red-800 border-2 border-red-500 shadow-sm'
-                              : 'bg-white text-gray-600 border border-gray-300 hover:bg-red-50'
-                          }`}
-                        >
-                          <div className="flex flex-col items-center">
-                            <span className="text-xs">Against</span>
-                            <span className="text-xs">(Option B)</span>
-                          </div>
-                        </button>
-                      </div>
+  {/* Against position */}
+  <div
+    className={`px-3 py-2 rounded-md text-sm transition-colors ${
+      formData.selectedModels[model.id].positions.against
+        ? 'bg-red-100 text-red-800 border-2 border-red-500 shadow-sm'
+        : 'bg-white text-gray-600 border border-gray-300'
+    }`}
+  >
+    <div className="flex flex-col items-center">
+      <span className="text-xs">Against</span>
+      <span className="text-xs">(Option B)</span>
+      
+      {/* Count display and controls */}
+      <div className="flex items-center mt-1">
+        <button
+          type="button"
+          onClick={() => handleModelDecrement(model.id, 'against')}
+          className="w-6 h-6 bg-gray-200 rounded-l text-gray-700 flex items-center justify-center hover:bg-gray-300"
+          disabled={!formData.selectedModels[model.id].positions.against}
+        >
+          -
+        </button>
+        <span className="w-8 text-center">
+          {formData.selectedModels[model.id].positions.against || 0}
+        </span>
+        <button
+          type="button"
+          onClick={() => handleModelToggle(model.id, 'against')}
+          className="w-6 h-6 bg-gray-200 rounded-r text-gray-700 flex items-center justify-center hover:bg-gray-300"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
                     </div>
                   ))}
                 </div>
@@ -471,58 +576,52 @@ const SetupForm = () => {
                       Selected Models & Positions
                     </h4>
                     <div className="space-y-2 mt-2">
-                      {availableModels.map(
-                        (model) =>
-                          formData.selectedModels[model.id].selected && (
-                            <div
-                              key={model.id}
-                              className="flex items-center flex-wrap gap-2"
-                            >
-                              <div className="flex items-center">
-                                <div
-                                  className="w-4 h-4 rounded-full mr-2"
-                                  style={{ backgroundColor: model.color }}
-                                ></div>
-                                <span className="text-sm mr-2">
-                                  {model.short}
-                                </span>
-                              </div>
+  {availableModels.map(
+    (model) =>
+      formData.selectedModels[model.id].selected && (
+        <div
+          key={model.id}
+          className="flex items-center flex-wrap gap-2"
+        >
+          <div className="flex items-center">
+            <div
+              className="w-4 h-4 rounded-full mr-2"
+              style={{ backgroundColor: model.color }}
+            ></div>
+            <span className="text-sm mr-2">
+              {model.short}
+            </span>
+          </div>
 
-                              {formData.selectedModels[model.id].positions
-                                .pro && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                                  Pro (Option A)
-                                </span>
-                              )}
+          {formData.selectedModels[model.id].positions.pro > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+              Pro (Option A): {formData.selectedModels[model.id].positions.pro}
+            </span>
+          )}
 
-                              {formData.selectedModels[model.id].positions
-                                .neutral && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                                  Neutral
-                                </span>
-                              )}
+          {formData.selectedModels[model.id].positions.neutral > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+              Neutral: {formData.selectedModels[model.id].positions.neutral}
+            </span>
+          )}
 
-                              {formData.selectedModels[model.id].positions
-                                .against && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
-                                  Against (Option B)
-                                </span>
-                              )}
+          {formData.selectedModels[model.id].positions.against > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+              Against (Option B): {formData.selectedModels[model.id].positions.against}
+            </span>
+          )}
 
-                              {!formData.selectedModels[model.id].positions
-                                .pro &&
-                                !formData.selectedModels[model.id].positions
-                                  .neutral &&
-                                !formData.selectedModels[model.id].positions
-                                  .against && (
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
-                                    No positions selected
-                                  </span>
-                                )}
-                            </div>
-                          )
-                      )}
-                    </div>
+          {!formData.selectedModels[model.id].positions.pro &&
+            !formData.selectedModels[model.id].positions.neutral &&
+            !formData.selectedModels[model.id].positions.against && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
+                No positions selected
+              </span>
+            )}
+        </div>
+      )
+  )}
+</div>
                   </div>
                 </div>
 
