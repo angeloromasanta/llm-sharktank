@@ -1,7 +1,8 @@
 // components/SharkTank.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getProductRounds } from '../lib/firebase';
 import {
   ChevronRight,
   ArrowRightLeft,
@@ -14,6 +15,8 @@ import {
 const SharkTank = ({ productData }) => {
   const [activeRound, setActiveRound] = useState(1);
   const [activeTab, setActiveTab] = useState('discussion');
+  const [roundsData, setRoundsData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // LLM Models with their colors
   const llmModels = {
@@ -25,190 +28,59 @@ const SharkTank = ({ productData }) => {
     'anthropic/claude-3.7-sonnet': { color: '#6366f1', short: 'Claude' },
   };
 
-  // Mock data for rounds
-  const roundsData = [
-    {
-      number: 1,
-      activeMembers: [
-        'Member 1',
-        'Member 2',
-        'Member 3',
-        'Member 4',
-        'Member 5',
-        'Member 6',
-      ],
-      discussion: [
-        {
-          member: 'Member 1',
-          model: 'meta-llama/llama-3.3-70b-instruct',
-          content:
-            "This product shows promise in the growing market intelligence sector. The ability to predict market shifts could provide significant value to businesses of all sizes. However, I'm concerned about data accuracy and how the algorithm handles conflicting signals.",
-        },
-        {
-          member: 'Member 2',
-          model: 'google/gemini-2.0-flash-001',
-          content:
-            'I like the concept, but the valuation seems high for a pre-revenue company. What validation metrics do you have beyond your beta testers? How are you addressing potential issues with data privacy regulations?',
-        },
-        {
-          member: 'Member 3',
-          model: 'mistralai/mistral-nemo',
-          content:
-            'The market for predictive analytics tools is getting crowded. I need to understand your unique advantage over established competitors. Your technology needs to be genuinely innovative to justify this valuation.',
-        },
-        {
-          member: 'Member 4',
-          model: 'openai/gpt-4o-mini',
-          content:
-            "The problem you're solving is real and valuable. Companies struggle to synthesize market signals effectively. But your customer acquisition strategy isn't clear, and I worry about the long sales cycles in enterprise software.",
-        },
-        {
-          member: 'Member 5',
-          model: 'deepseek/deepseek-chat',
-          content:
-            "I believe your product addresses a significant pain point for businesses. However, I'd like to see more evidence of accuracy in your predictions and a clearer path to profitability.",
-        },
-        {
-          member: 'Member 6',
-          model: 'anthropic/claude-3.7-sonnet',
-          content:
-            "This could be revolutionary if the predictive capabilities are as strong as you claim. My main concerns are about scalability and whether you've tested this across diverse markets and industries to ensure broad applicability.",
-        },
-      ],
-      eliminated: 'Member 4',
-      votes: {
-        'Member 1': 'Member 4',
-        'Member 2': 'Member 1',
-        'Member 3': 'Member 2',
-        'Member 4': 'Member 2',
-        'Member 5': 'Member 4',
-        'Member 6': 'Member 5',
-      },
-    },
-    {
-      number: 2,
-      activeMembers: [
-        'Member 1',
-        'Member 2',
-        'Member 3',
-        'Member 5',
-        'Member 6',
-      ],
-      discussion: [
-        {
-          member: 'Member 5',
-          model: 'deepseek/deepseek-chat',
-          content:
-            "After hearing more about your technology, I'm impressed with your approach to combining multiple data sources. Could you elaborate on how you're measuring the accuracy of your predictions?",
-        },
-        {
-          member: 'Member 2',
-          model: 'google/gemini-2.0-flash-001',
-          content:
-            "I'm still concerned about the valuation. What are your current revenue projections and customer acquisition costs? Have you considered a freemium model to accelerate adoption?",
-        },
-        {
-          member: 'Member 3',
-          model: 'mistralai/mistral-nemo',
-          content:
-            "Your competitive analysis seems incomplete. There are several established players offering similar services. What's your strategy for differentiation beyond just technical capabilities?",
-        },
-        {
-          member: 'Member 6',
-          model: 'anthropic/claude-3.7-sonnet',
-          content:
-            "I'm interested in your team composition. Do you have the right mix of AI expertise and industry knowledge? The success of this product will depend heavily on understanding both the technology and market dynamics.",
-        },
-        {
-          member: 'Member 1',
-          model: 'meta-llama/llama-3.3-70b-instruct',
-          content:
-            "Let's discuss scalability. How does your system handle increasing data volumes and new markets? I'm particularly concerned about maintaining prediction quality as you expand to different industries.",
-        },
-      ],
-      eliminated: 'Member 5',
-      votes: {
-        'Member 1': 'Member 5',
-        'Member 2': 'Member 5',
-        'Member 3': 'Member 1',
-        'Member 5': 'Member 6',
-        'Member 6': 'Member 5',
-      },
-    },
-    {
-      number: 3,
-      activeMembers: ['Member 1', 'Member 2', 'Member 3', 'Member 6'],
-      discussion: [
-        {
-          member: 'Member 6',
-          model: 'anthropic/claude-3.7-sonnet',
-          content:
-            "After three rounds of discussion, I'm convinced that your product has significant potential. My remaining concern is about your go-to-market strategy. How will you penetrate enterprise accounts with typically long sales cycles?",
-        },
-        {
-          member: 'Member 1',
-          model: 'meta-llama/llama-3.3-70b-instruct',
-          content:
-            "I'm interested in your data sources and how you're ensuring both breadth and depth in your analysis. Also, how are you handling potential biases in the training data for your prediction algorithms?",
-        },
-        {
-          member: 'Member 3',
-          model: 'mistralai/mistral-nemo',
-          content:
-            "Let's talk about your defensive moat. Once you prove this concept works, what prevents larger competitors from replicating your approach? Do you have any proprietary technology or data that gives you a sustainable advantage?",
-        },
-        {
-          member: 'Member 2',
-          model: 'google/gemini-2.0-flash-001',
-          content:
-            "I'm focused on unit economics. What's the cost to serve each customer, and how does that scale? Are there opportunities for additional revenue streams beyond the core subscription?",
-        },
-      ],
-      eliminated: 'Member 3',
-      votes: {
-        'Member 1': 'Member 2',
-        'Member 2': 'Member 3',
-        'Member 3': 'Member 2',
-        'Member 6': 'Member 3',
-      },
-    },
-    {
-      number: 4,
-      activeMembers: ['Member 1', 'Member 2', 'Member 6'],
-      discussion: [
-        {
-          member: 'Member 2',
-          model: 'google/gemini-2.0-flash-001',
-          content:
-            'After thorough consideration, I believe this product has potential but the current valuation is too high and the competitive landscape is challenging.',
-        },
-        {
-          member: 'Member 1',
-          model: 'meta-llama/llama-3.3-70b-instruct',
-          content:
-            'I see tremendous potential in this market intelligence tool. The technical approach is sound, and with the right execution, this could transform how businesses make strategic decisions.',
-        },
-        {
-          member: 'Member 6',
-          model: 'anthropic/claude-3.7-sonnet',
-          content:
-            'This product addresses a clear market need with an innovative approach. While there are execution risks, I believe the team has the right expertise and vision to succeed.',
-        },
-      ],
-      finalVotes: {
-        'Member 2': 'Out',
-        'Member 1': 'In',
-        'Member 6': 'In',
-      },
-      result: 'In',
-    },
-  ];
+  // Fetch round data
+ // Replace the useEffect in SharkTank.tsx with this updated version
+
+// Replace the entire useEffect in SharkTank.tsx
+
+useEffect(() => {
+  const fetchCurrentRound = async () => {
+    if (!productData?.id || !activeRound) return;
+    
+    try {
+      console.log(`Directly fetching data for round ${activeRound}`);
+      const rounds = await getProductRounds(productData.id);
+      const round = rounds.find(r => r.number === activeRound);
+      
+      if (round) {
+        console.log(`Direct fetch got round ${activeRound}:`, round);
+        console.log(`Round has ${round.discussion ? round.discussion.length : 0} messages`);
+        
+        // Update just the current round without affecting others
+        setRoundsData(prevRounds => {
+          // Replace the current round in the array
+          return prevRounds.map(r => 
+            r.number === activeRound ? round : r
+          );
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching specific round:", error);
+    }
+  };
+  
+  fetchCurrentRound();
+}, [productData?.id, activeRound]);
 
   // Helper function to get the current round data
   const getCurrentRound = () => {
-    return (
-      roundsData.find((round) => round.number === activeRound) || roundsData[0]
-    );
+    if (!roundsData || roundsData.length === 0) {
+      return null;
+    }
+    
+    console.log(`Looking for round ${activeRound} in ${roundsData.length} rounds`);
+    
+    // Find round with the matching number
+    const foundRound = roundsData.find((round) => round.number === activeRound);
+    
+    if (foundRound) {
+      console.log(`Found round ${activeRound}:`, foundRound);
+      return foundRound;
+    }
+    
+    // If not found, return the first round as fallback
+    console.log(`Round ${activeRound} not found, falling back to first round`);
+    return roundsData[0];
   };
 
   // Get current round data
@@ -243,7 +115,7 @@ const SharkTank = ({ productData }) => {
           <span>Elimination Voting</span>
         </div>
       </button>
-      {currentRound.number === 4 && (
+      {currentRound?.number === roundsData.length && roundsData.length > 0 && (
         <button
           className={`px-4 py-2 font-medium ${
             activeTab === 'result'
@@ -283,112 +155,154 @@ const SharkTank = ({ productData }) => {
   };
 
   // Helper function to determine opinion stance
-  const getOpinionStance = (content) => {
+  const getOpinionStance = (content, position) => {
+    // If the position is explicitly provided, use it
+    if (position === 'pro' || position === 'against' || position === 'neutral') {
+      return position;
+    }
+    
+    // If content is empty, default to neutral
+    if (!content) {
+      return 'neutral';
+    }
+    
     const lowerContent = content.toLowerCase();
-
-    // Simplistic sentiment analysis - this could be more sophisticated
-    if (
-      lowerContent.includes('potential') &&
-      !lowerContent.includes('concerned') &&
-      !lowerContent.includes('however')
-    ) {
+  
+    // Simple content-based classification
+    if (lowerContent.includes('great opportunity') || 
+        lowerContent.includes('position: pro') ||
+        (lowerContent.includes('potential') && !lowerContent.includes('concerns'))) {
       return 'pro';
-    } else if (
-      lowerContent.includes('concerned') ||
-      lowerContent.includes('worried') ||
-      lowerContent.includes('unclear') ||
-      lowerContent.includes('too high')
-    ) {
+    } else if (lowerContent.includes('concerns') || 
+               lowerContent.includes('position: against') ||
+               lowerContent.includes('worried') || 
+               lowerContent.includes('too high')) {
       return 'against';
     } else {
       return 'neutral';
     }
   };
 
-  const renderDiscussion = () => {
-    // Group messages by stance
-    const proMessages = currentRound.discussion.filter(
-      (msg) => getOpinionStance(msg.content) === 'pro'
-    );
-    const neutralMessages = currentRound.discussion.filter(
-      (msg) => getOpinionStance(msg.content) === 'neutral'
-    );
-    const againstMessages = currentRound.discussion.filter(
-      (msg) => getOpinionStance(msg.content) === 'against'
-    );
+  // Replace the renderDiscussion function in SharkTank.tsx
 
-    return (
-      <div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Pro Column */}
-          <div className="space-y-4">
-            <div className="bg-green-100 p-3 rounded-lg text-green-800 font-medium flex items-center justify-center">
-              <div className="bg-green-200 p-1 rounded-full mr-2">
-                <ThumbsDown className="rotate-180 h-4 w-4 text-green-700" />
-              </div>
-              Pro ({proMessages.length})
-            </div>
-            {proMessages.map((message, index) => (
-              <div
-                key={index}
-                className="p-4 bg-white rounded-lg shadow-sm border-l-4 border-green-400"
-              >
-                <div className="flex items-center mb-3">
-                  {renderMemberAvatar(message.member, message.model)}
-                </div>
-                <p className="text-gray-700">{message.content}</p>
-              </div>
-            ))}
-          </div>
+// Replace the entire renderDiscussion function in SharkTank.tsx
 
-          {/* Neutral Column */}
-          <div className="space-y-4">
-            <div className="bg-blue-100 p-3 rounded-lg text-blue-800 font-medium flex items-center justify-center">
-              <div className="bg-blue-200 p-1 rounded-full mr-2">
-                <ArrowRightLeft className="h-4 w-4 text-blue-700" />
-              </div>
-              Neutral ({neutralMessages.length})
-            </div>
-            {neutralMessages.map((message, index) => (
-              <div
-                key={index}
-                className="p-4 bg-white rounded-lg shadow-sm border-l-4 border-blue-400"
-              >
-                <div className="flex items-center mb-3">
-                  {renderMemberAvatar(message.member, message.model)}
-                </div>
-                <p className="text-gray-700">{message.content}</p>
-              </div>
-            ))}
-          </div>
+const renderDiscussion = () => {
+  if (!currentRound) {
+    return <div className="p-6 text-center text-gray-500">No discussion data available yet.</div>;
+  }
 
-          {/* Against Column */}
-          <div className="space-y-4">
-            <div className="bg-red-100 p-3 rounded-lg text-red-800 font-medium flex items-center justify-center">
-              <div className="bg-red-200 p-1 rounded-full mr-2">
-                <ThumbsDown className="h-4 w-4 text-red-700" />
-              </div>
-              Against ({againstMessages.length})
+  console.log("Rendering discussion for round:", currentRound.number);
+  console.log("Discussion data:", currentRound.discussion);
+  
+  // Ensure discussion is always an array
+  const discussionArray = currentRound.discussion || [];
+  console.log(`Found ${discussionArray.length} messages in round ${currentRound.number}`);
+  
+  // Group messages by stance
+  const proMessages = discussionArray.filter(
+    (msg) => getOpinionStance(msg.content, msg.position) === 'pro'
+  );
+  
+  const neutralMessages = discussionArray.filter(
+    (msg) => getOpinionStance(msg.content, msg.position) === 'neutral'
+  );
+  
+  const againstMessages = discussionArray.filter(
+    (msg) => getOpinionStance(msg.content, msg.position) === 'against'
+  );
+  
+  console.log(`Pro: ${proMessages.length}, Neutral: ${neutralMessages.length}, Against: ${againstMessages.length}`);
+
+  return (
+    <div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Pro Column */}
+        <div className="space-y-4">
+          <div className="bg-green-100 p-3 rounded-lg text-green-800 font-medium flex items-center justify-center">
+            <div className="bg-green-200 p-1 rounded-full mr-2">
+              <ThumbsDown className="rotate-180 h-4 w-4 text-green-700" />
             </div>
-            {againstMessages.map((message, index) => (
-              <div
-                key={index}
-                className="p-4 bg-white rounded-lg shadow-sm border-l-4 border-red-400"
-              >
-                <div className="flex items-center mb-3">
-                  {renderMemberAvatar(message.member, message.model)}
-                </div>
-                <p className="text-gray-700">{message.content}</p>
-              </div>
-            ))}
+            Pro ({proMessages.length})
           </div>
+          {proMessages.map((message, index) => (
+            <div
+              key={`pro-${message.member}-${index}`}
+              className="p-4 bg-white rounded-lg shadow-sm border-l-4 border-green-400"
+            >
+              <div className="flex items-center mb-3">
+                {renderMemberAvatar(message.member, message.model)}
+              </div>
+              <p className="text-gray-700">{message.content}</p>
+            </div>
+          ))}
+          {proMessages.length === 0 && (
+            <div className="p-4 bg-white rounded-lg shadow-sm text-center text-gray-500">
+              No pro arguments in this round
+            </div>
+          )}
+        </div>
+
+        {/* Neutral Column */}
+        <div className="space-y-4">
+          <div className="bg-blue-100 p-3 rounded-lg text-blue-800 font-medium flex items-center justify-center">
+            <div className="bg-blue-200 p-1 rounded-full mr-2">
+              <ArrowRightLeft className="h-4 w-4 text-blue-700" />
+            </div>
+            Neutral ({neutralMessages.length})
+          </div>
+          {neutralMessages.map((message, index) => (
+            <div
+              key={`neutral-${message.member}-${index}`}
+              className="p-4 bg-white rounded-lg shadow-sm border-l-4 border-blue-400"
+            >
+              <div className="flex items-center mb-3">
+                {renderMemberAvatar(message.member, message.model)}
+              </div>
+              <p className="text-gray-700">{message.content}</p>
+            </div>
+          ))}
+          {neutralMessages.length === 0 && (
+            <div className="p-4 bg-white rounded-lg shadow-sm text-center text-gray-500">
+              No neutral arguments in this round
+            </div>
+          )}
+        </div>
+
+        {/* Against Column */}
+        <div className="space-y-4">
+          <div className="bg-red-100 p-3 rounded-lg text-red-800 font-medium flex items-center justify-center">
+            <div className="bg-red-200 p-1 rounded-full mr-2">
+              <ThumbsDown className="h-4 w-4 text-red-700" />
+            </div>
+            Against ({againstMessages.length})
+          </div>
+          {againstMessages.map((message, index) => (
+            <div
+              key={`against-${message.member}-${index}`}
+              className="p-4 bg-white rounded-lg shadow-sm border-l-4 border-red-400"
+            >
+              <div className="flex items-center mb-3">
+                {renderMemberAvatar(message.member, message.model)}
+              </div>
+              <p className="text-gray-700">{message.content}</p>
+            </div>
+          ))}
+          {againstMessages.length === 0 && (
+            <div className="p-4 bg-white rounded-lg shadow-sm text-center text-gray-500">
+              No counterarguments in this round
+            </div>
+          )}
         </div>
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   const renderVoting = () => {
-    if (!currentRound.votes) return null;
+    if (!currentRound || !currentRound.votes) {
+      return <div className="p-6 text-center text-gray-500">No voting data available yet.</div>;
+    }
 
     return (
       <div className="space-y-6">
@@ -417,29 +331,48 @@ const SharkTank = ({ productData }) => {
                   </div>
                 )
               )}
+              {Object.keys(currentRound.votes).length === 0 && (
+                <div className="p-4 bg-white rounded-lg shadow-sm text-center text-gray-500 md:col-span-2">
+                  Voting in progress...
+                </div>
+              )}
             </div>
           </div>
 
           <div>
-            <div className="bg-red-50 rounded-lg border border-red-200 p-6 h-full flex flex-col items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-3">
-                <ThumbsDown size={28} className="text-red-500" />
-              </div>
-              <h3 className="font-medium text-lg text-red-800 text-center">
-                Eliminated This Round
-              </h3>
-              <div className="mt-4 flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-white text-xl font-bold mb-2">
-                  {currentRound.eliminated.split(' ')[1]}
+            {currentRound.eliminated ? (
+              <div className="bg-red-50 rounded-lg border border-red-200 p-6 h-full flex flex-col items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-3">
+                  <ThumbsDown size={28} className="text-red-500" />
                 </div>
-                <span className="text-red-800 font-medium text-lg">
-                  {currentRound.eliminated}
-                </span>
+                <h3 className="font-medium text-lg text-red-800 text-center">
+                  Eliminated This Round
+                </h3>
+                <div className="mt-4 flex flex-col items-center">
+                  <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-white text-xl font-bold mb-2">
+                    {currentRound.eliminated.split(' ')[1]}
+                  </div>
+                  <span className="text-red-800 font-medium text-lg">
+                    {currentRound.eliminated}
+                  </span>
+                </div>
+                <div className="text-sm text-gray-500 mt-4 text-center">
+                  Received the most elimination votes from other panel members
+                </div>
               </div>
-              <div className="text-sm text-gray-500 mt-4 text-center">
-                Received the most elimination votes from other panel members
+            ) : (
+              <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-6 h-full flex flex-col items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center mb-3">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-700"></div>
+                </div>
+                <h3 className="font-medium text-lg text-yellow-800 text-center">
+                  Elimination in Progress
+                </h3>
+                <div className="text-sm text-gray-500 mt-4 text-center">
+                  The panel is currently voting on who to eliminate
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -447,7 +380,9 @@ const SharkTank = ({ productData }) => {
   };
 
   const renderFinalResult = () => {
-    if (!currentRound.finalVotes) return null;
+    if (!currentRound || !currentRound.finalVotes) {
+      return <div className="p-6 text-center text-gray-500">Final decision not available yet.</div>;
+    }
 
     const totalVotes = Object.values(currentRound.finalVotes);
     const inVotes = totalVotes.filter((vote) => vote === 'In').length;
@@ -490,56 +425,73 @@ const SharkTank = ({ productData }) => {
                 </div>
               </div>
             ))}
+            
+            {proMembers.length === 0 && (
+              <div className="p-6 rounded-lg shadow-sm text-center text-gray-500">
+                No investors in favor yet
+              </div>
+            )}
           </div>
 
           {/* Center column - Final Decision */}
           <div>
             <div
               className={`h-full p-6 rounded-lg border flex flex-col items-center justify-center ${
-                currentRound.result === 'In'
-                  ? 'bg-green-50 border-green-300'
-                  : 'bg-red-50 border-red-300'
+                currentRound.result
+                  ? currentRound.result === 'In'
+                    ? 'bg-green-50 border-green-300'
+                    : 'bg-red-50 border-red-300'
+                  : 'bg-gray-50 border-gray-300'
               }`}
             >
               <h2 className="text-xl font-medium mb-4 text-gray-800">
                 Final Decision
               </h2>
 
-              <div
-                className={`w-24 h-24 rounded-full flex items-center justify-center mb-4 ${
-                  currentRound.result === 'In' ? 'bg-green-100' : 'bg-red-100'
-                }`}
-              >
-                <div
-                  className={`text-4xl ${
-                    currentRound.result === 'In'
-                      ? 'text-green-600'
-                      : 'text-red-600'
-                  }`}
-                >
-                  {currentRound.result === 'In' ? '✓' : '✕'}
+              {currentRound.result ? (
+                <>
+                  <div
+                    className={`w-24 h-24 rounded-full flex items-center justify-center mb-4 ${
+                      currentRound.result === 'In' ? 'bg-green-100' : 'bg-red-100'
+                    }`}
+                  >
+                    <div
+                      className={`text-4xl ${
+                        currentRound.result === 'In'
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }`}
+                    >
+                      {currentRound.result === 'In' ? '✓' : '✕'}
+                    </div>
+                  </div>
+
+                  <div
+                    className={`text-3xl font-bold mb-2 ${
+                      currentRound.result === 'In'
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }`}
+                  >
+                    {currentRound.result === 'In' ? 'ACCEPTED' : 'REJECTED'}
+                  </div>
+
+                  <div className="mt-2 text-gray-500 text-center">
+                    Vote split: {inVotes} to {outVotes}
+                  </div>
+
+                  <div className="mt-6 bg-blue-50 p-3 rounded-lg text-sm text-blue-800 text-center">
+                    {currentRound.result === 'In'
+                      ? 'The product will receive the requested investment and mentorship'
+                      : 'The product will not receive investment from the panel'}
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mb-4"></div>
+                  <p className="text-gray-600">Finalizing decision...</p>
                 </div>
-              </div>
-
-              <div
-                className={`text-3xl font-bold mb-2 ${
-                  currentRound.result === 'In'
-                    ? 'text-green-600'
-                    : 'text-red-600'
-                }`}
-              >
-                {currentRound.result === 'In' ? 'ACCEPTED' : 'REJECTED'}
-              </div>
-
-              <div className="mt-2 text-gray-500 text-center">
-                Vote split: {inVotes} to {outVotes}
-              </div>
-
-              <div className="mt-6 bg-blue-50 p-3 rounded-lg text-sm text-blue-800 text-center">
-                {currentRound.result === 'In'
-                  ? 'The product will receive the requested investment and mentorship'
-                  : 'The product will not receive investment from the panel'}
-              </div>
+              )}
             </div>
           </div>
 
@@ -569,16 +521,47 @@ const SharkTank = ({ productData }) => {
                 </div>
               </div>
             ))}
+            
+            {againstMembers.length === 0 && (
+              <div className="p-6 rounded-lg shadow-sm text-center text-gray-500">
+                No investors against yet
+              </div>
+            )}
           </div>
         </div>
       </div>
     );
   };
 
+  // Replace the loading and empty states in SharkTank.tsx
+
+if (loading) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mb-4"></div>
+      <p className="text-gray-600">Loading discussion data...</p>
+    </div>
+  );
+}
+
+// Changed this condition - don't require rounds data if product exists
+if (!productData) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6 rounded-lg">
+      <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+        <MessageSquare size={28} className="text-red-600" />
+      </div>
+      <h3 className="text-xl font-medium text-gray-800 mb-2">
+        Product Not Found
+      </h3>
+      <p className="text-gray-600 text-center max-w-md">
+        The product information could not be loaded. Please check the product ID and try again.
+      </p>
+    </div>
+  );
+}
   return (
     <div className="bg-gray-50 min-h-screen">
-      {/* Header */}
-
       {/* Main Content */}
       <main className="max-w-5xl mx-auto py-6 px-4">
         {/* Product Information */}
@@ -587,7 +570,7 @@ const SharkTank = ({ productData }) => {
             <div className="md:w-1/3 bg-gray-50 p-6 flex items-center justify-center">
               <div className="relative w-full aspect-square max-w-xs">
                 <img
-                  src={productData.imageUrl}
+                  src={productData.imageUrl || '/api/placeholder/400/300'}
                   alt={productData.name}
                   className="rounded-lg w-full h-full object-cover shadow-lg"
                 />
@@ -606,6 +589,9 @@ const SharkTank = ({ productData }) => {
                 </div>
               </div>
 
+              <div className="text-blue-600 font-medium mb-4 text-lg">
+                {productData.askingFor}
+              </div>
 
               <p className="text-gray-600 mb-6 leading-relaxed">
                 {productData.description}
@@ -615,15 +601,15 @@ const SharkTank = ({ productData }) => {
                 <div className="flex items-center bg-gray-100 px-3 py-1.5 rounded-lg">
                   <Users size={16} className="text-gray-500 mr-2" />
                   <span className="text-sm text-gray-700 font-medium">
-                    {currentRound.activeMembers.length} LLMs Evaluating
+                    {currentRound && currentRound.activeMembers ? currentRound.activeMembers.length : '?'} LLMs Evaluating
                   </span>
                 </div>
 
                 <div className="flex items-center bg-gray-100 px-3 py-1.5 rounded-lg">
                   <ChevronRight size={16} className="text-gray-500 mr-2" />
                   <span className="text-sm text-gray-700 font-medium">
-                    Round {currentRound.number}
-                    {currentRound.number === 4 ? ' (Final)' : ''}
+                    Round {currentRound ? currentRound.number : '?'}
+                    {currentRound && currentRound.number === roundsData.length ? ' (Final)' : ''}
                   </span>
                 </div>
               </div>
@@ -631,39 +617,45 @@ const SharkTank = ({ productData }) => {
           </div>
         </div>
 
-        {/* Round Navigation */}
-        <div className="flex overflow-x-auto whitespace-nowrap py-2 mb-6">
-          {roundsData.map((round) => (
-            <button
-              key={round.number}
-              onClick={() => setActiveRound(round.number)}
-              className={`px-4 py-2 rounded-full mr-2 flex items-center ${
-                activeRound === round.number
-                  ? 'bg-blue-100 text-blue-800 font-medium'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              <span>Round {round.number}</span>
-              {round.number === 4 && (
-                <span className="ml-2 bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
-                  Final
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
 
+{/* Round Navigation */}
+<div className="flex overflow-x-auto whitespace-nowrap py-2 mb-6">
+  {roundsData
+    .filter((round, index, self) => 
+      // Filter out duplicate round numbers
+      index === self.findIndex(r => r.number === round.number)
+    )
+    .sort((a, b) => a.number - b.number) // Ensure correct order
+    .map((round) => (
+      <button
+        key={`round-${round.number}-${round.id}`}
+        onClick={() => setActiveRound(round.number)}
+        className={`px-4 py-2 rounded-full mr-2 flex items-center ${
+          activeRound === round.number
+            ? 'bg-blue-100 text-blue-800 font-medium'
+            : 'bg-gray-100 text-gray-600'
+        }`}
+      >
+        <span>Round {round.number}</span>
+        {round.number === Math.max(...roundsData.map(r => r.number)) && (
+          <span className="ml-2 bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
+            {round.status === 'completed' ? 'Final' : 'Current'}
+          </span>
+        )}
+      </button>
+    ))}
+</div>
         {/* Round Content */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold">
-              {currentRound.number === 4
+              {currentRound && currentRound.number === roundsData.length
                 ? 'Final Decision Round'
-                : `Round ${currentRound.number}`}
+                : `Round ${currentRound ? currentRound.number : '?'}`}
             </h2>
             <div className="text-sm text-gray-500 flex items-center">
               <Users size={16} className="mr-1" />
-              {currentRound.activeMembers.length} Active Members
+              {currentRound && currentRound.activeMembers ? currentRound.activeMembers.length : '?'} Active Members
             </div>
           </div>
 
@@ -673,7 +665,7 @@ const SharkTank = ({ productData }) => {
             {activeTab === 'discussion' && renderDiscussion()}
             {activeTab === 'voting' && renderVoting()}
             {activeTab === 'result' &&
-              currentRound.number === 4 &&
+              currentRound && currentRound.number === roundsData.length &&
               renderFinalResult()}
           </div>
         </div>

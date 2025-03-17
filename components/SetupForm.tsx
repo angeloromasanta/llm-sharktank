@@ -3,14 +3,12 @@
 
 import React, { useState } from 'react';
 import { CheckCircle, PlusCircle, AlertCircle } from 'lucide-react';
+import { createProduct } from '../lib/firebase';
 
 const SetupForm = () => {
-  // Update the state in SetupForm.tsx to track model positions
-  // Update the state in SetupForm.tsx to track model positions
   const [formData, setFormData] = useState({
     productName: '',
     productDescription: '',
-    askingFor: '',
     numberOfRounds: 4,
     selectedModels: {
       'meta-llama/llama-3.3-70b-instruct': {
@@ -178,28 +176,49 @@ const countTotalModelPositions = () => {
 };
 
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  
+// Inside the SetupForm component
+// Update the handleSubmit function in components/SetupForm.tsx
 
-    // Add confirmation step before proceeding
-    if (!isSubmitting && !isConfirming) {
-      setIsConfirming(true);
-      return;
-    }
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    setIsSubmitting(true);
+  if (!isSubmitting && !isConfirming) {
+    setIsConfirming(true);
+    return;
+  }
 
-    // Simulate API call
+  setIsSubmitting(true);
+
+  try {
+    // Format model selections for Firebase
+    const modelSelections = {};
+    Object.entries(formData.selectedModels).forEach(([modelId, modelData]) => {
+      if (modelData.selected) {
+        modelSelections[modelId] = modelData.positions;
+      }
+    });
+
+    // Create product in Firebase
+    const product = await createProduct({
+      name: formData.productName,
+      description: formData.productDescription,
+      numberOfRounds: parseInt(formData.numberOfRounds),
+      selectedModels: modelSelections,
+      status: 'pending'
+    });
+
+    setIsSuccess(true);
+
+    // Redirect to product page after successful creation
     setTimeout(() => {
-      setIsSubmitting(false);
-      setIsSuccess(true);
-
-      // Redirect would happen here in a real app
-      setTimeout(() => {
-        window.location.href = `/products/new-${Date.now()}`;
-      }, 2000);
-    }, 2000);
-  };
+      window.location.href = `/products/${product.id}`;
+    }, 1500);
+  } catch (error) {
+    console.error("Error creating product:", error);
+    setIsSubmitting(false);
+  }
+};
 
   const nextStep = () => {
     setFormStep(formStep + 1);
@@ -556,9 +575,6 @@ const countTotalModelPositions = () => {
                     <p className="font-medium">{formData.productName}</p>
                     <p className="text-sm text-gray-700 mt-1">
                       {formData.productDescription}
-                    </p>
-                    <p className="text-sm text-blue-600 font-medium mt-2">
-                      {formData.askingFor}
                     </p>
                   </div>
 
